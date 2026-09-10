@@ -31,9 +31,6 @@ replay_pid*
 .gradle/
 build/
 
-# Local machine-specific TLS trust store workaround (see setup notes)
-.gradle-trust-cacerts
-
 # IntelliJ IDEA
 .idea/
 *.iml
