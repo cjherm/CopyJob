@@ -14,7 +14,7 @@ import androidx.compose.ui.window.rememberWindowState
 
 private enum class Screen(val windowSize: DpSize) {
     Start(DpSize(360.dp, 480.dp)),
-    New(DpSize(480.dp, 340.dp)),
+    New(DpSize(640.dp, 560.dp)),
     OpenFile(DpSize(600.dp, 320.dp)),
     OpenNext(DpSize(480.dp, 340.dp)),
     Help(DpSize(480.dp, 340.dp)),
@@ -44,7 +44,7 @@ fun main() = application {
                 onHelp = { navigateTo(Screen.Help) },
                 onExit = ::exitApplication,
             )
-            Screen.New -> PlaceholderScreen("New job", onBack = { navigateTo(Screen.Start) })
+            Screen.New -> NewJobScreen(onBack = { navigateTo(Screen.Start) })
             Screen.OpenFile -> FileSelectionScreen(
                 onNext = { navigateTo(Screen.OpenNext) },
                 onBack = { navigateTo(Screen.Start) },
