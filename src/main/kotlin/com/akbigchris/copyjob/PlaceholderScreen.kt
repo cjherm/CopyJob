@@ -24,8 +24,10 @@ fun PlaceholderScreen(title: String, onBack: () -> Unit) {
             ) {
                 Text("Coming soon")
             }
-            OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text("Back")
+            HelpTooltip(HelpTexts["placeholder.back"], modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                    Text("Back")
+                }
             }
         }
     }

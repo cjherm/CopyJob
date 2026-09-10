@@ -10,6 +10,7 @@ import javax.swing.filechooser.FileSystemView
 class JobItem(val path: String, val isDirectory: Boolean) {
     val name: String = File(path).name.ifEmpty { path }
     val sizeBytes = mutableStateOf<Long?>(null)
+    val fileCount = mutableStateOf<Int?>(null)
     val icon = mutableStateOf<ImageBitmap?>(null)
 }
 
@@ -22,8 +23,18 @@ fun loadSystemIcon(file: File): ImageBitmap? {
     return image.toComposeImageBitmap()
 }
 
-fun directorySize(dir: File): Long =
-    dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+/** Total size in bytes and count of files (recursively) inside [dir]. */
+fun directoryStats(dir: File): Pair<Long, Int> {
+    var size = 0L
+    var count = 0
+    dir.walkTopDown().forEach { file ->
+        if (file.isFile) {
+            size += file.length()
+            count++
+        }
+    }
+    return size to count
+}
 
 fun humanReadableSize(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"

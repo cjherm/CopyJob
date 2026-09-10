@@ -2,13 +2,16 @@ package com.akbigchris.copyjob
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
@@ -43,6 +48,7 @@ import androidx.compose.ui.draganddrop.dragData
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +57,22 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
+
+private enum class SortKey(val label: String) {
+    Name("Name"),
+    Type("Type"),
+    Size("Size"),
+}
+
+private fun sortedBy(items: List<JobItem>, sortKey: SortKey): List<JobItem> = when (sortKey) {
+    SortKey.Name -> items.sortedBy { it.name.lowercase() }
+    SortKey.Type -> items.sortedWith(
+        compareByDescending<JobItem> { it.isDirectory }.thenBy { it.name.lowercase() },
+    )
+    SortKey.Size -> items.sortedWith(
+        compareBy<JobItem, Long?>(nullsLast()) { it.sizeBytes.value }.thenBy { it.name.lowercase() },
+    )
+}
 
 private fun uriStringToFile(uriString: String): File? =
     runCatching { File(URI(uriString)) }.getOrNull()
@@ -83,18 +105,52 @@ fun NewJobScreen(onBack: () -> Unit) {
 
             coroutineScope.launch(Dispatchers.IO) {
                 val icon = runCatching { loadSystemIcon(file) }.getOrNull()
-                val size = runCatching {
-                    if (file.isDirectory) directorySize(file) else file.length()
-                }.getOrDefault(0L)
                 item.icon.value = icon
-                item.sizeBytes.value = size
+                if (file.isDirectory) {
+                    val (size, count) = runCatching { directoryStats(file) }.getOrDefault(0L to 0)
+                    item.sizeBytes.value = size
+                    item.fileCount.value = count
+                } else {
+                    item.sizeBytes.value = runCatching { file.length() }.getOrDefault(0L)
+                }
             }
         }
     }
 
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Text("New job", style = MaterialTheme.typography.h6)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Select items to be copied",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.weight(1f),
+                )
+                HelpTooltip(HelpTexts["newJob.add"]) {
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            val picked = withContext(Dispatchers.IO) { pickFilesAndDirs() }
+                            addFiles(picked)
+                        }
+                    }) {
+                        Text("Add")
+                    }
+                }
+            }
+
+            var sortKey by remember { mutableStateOf(SortKey.Name) }
+            var sortAscending by remember { mutableStateOf(true) }
+
+            fun onHeaderClick(key: SortKey) {
+                if (sortKey == key) {
+                    sortAscending = !sortAscending
+                } else {
+                    sortKey = key
+                    sortAscending = true
+                }
+            }
 
             var isDragging by remember { mutableStateOf(false) }
 
@@ -146,10 +202,39 @@ fun NewJobScreen(onBack: () -> Unit) {
                         color = Color.Gray,
                     )
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                        items(items, key = { it.path }) { item ->
-                            JobItemRow(item, onRemove = { items.remove(item) })
-                            Divider()
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        ) {
+                            SortHeaderLabel(SortKey.Name, HelpTexts["newJob.sortByName"], sortKey, sortAscending) {
+                                onHeaderClick(SortKey.Name)
+                            }
+                            SortHeaderLabel(SortKey.Type, HelpTexts["newJob.sortByType"], sortKey, sortAscending) {
+                                onHeaderClick(SortKey.Type)
+                            }
+                            SortHeaderLabel(SortKey.Size, HelpTexts["newJob.sortBySize"], sortKey, sortAscending) {
+                                onHeaderClick(SortKey.Size)
+                            }
+                        }
+                        Divider()
+
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            val listState = rememberLazyListState()
+                            val sorted = sortedBy(items, sortKey).let { if (sortAscending) it else it.reversed() }
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize().padding(8.dp).padding(end = 12.dp),
+                            ) {
+                                items(sorted, key = { it.path }) { item ->
+                                    JobItemRow(item, onRemove = { items.remove(item) })
+                                    Divider()
+                                }
+                            }
+                            VerticalScrollbar(
+                                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                                adapter = rememberScrollbarAdapter(listState),
+                            )
                         }
                     }
                 }
@@ -157,29 +242,33 @@ fun NewJobScreen(onBack: () -> Unit) {
 
             val fileCount = items.count { !it.isDirectory }
             val dirCount = items.count { it.isDirectory }
+            val isCalculating = items.any { it.sizeBytes.value == null }
             val totalSize = items.sumOf { it.sizeBytes.value ?: 0L }
             Text(
                 "$fileCount file${if (fileCount == 1) "" else "s"}, " +
                     "$dirCount director${if (dirCount == 1) "y" else "ies"} — " +
-                    humanReadableSize(totalSize) + " total",
+                    humanReadableSize(totalSize) + " total" +
+                    if (isCalculating) " STILL CALCULATING..." else "",
                 modifier = Modifier.padding(top = 12.dp),
             )
+
+            val hasCopyableContent = items.isNotEmpty() && items.any { !it.isDirectory || (it.sizeBytes.value ?: 0L) > 0L }
+            val nextEnabled = !isCalculating && hasCopyableContent
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onBack) {
-                        Text("Back")
-                    }
-                    Button(onClick = {
-                        coroutineScope.launch {
-                            val picked = withContext(Dispatchers.IO) { pickFilesAndDirs() }
-                            addFiles(picked)
+                    HelpTooltip(HelpTexts["newJob.back"]) {
+                        OutlinedButton(onClick = onBack) {
+                            Text("Back")
                         }
-                    }) {
-                        Text("Add")
+                    }
+                    HelpTooltip(HelpTexts["newJob.next"]) {
+                        Button(onClick = { /* not wired up yet */ }, enabled = nextEnabled) {
+                            Text("Next")
+                        }
                     }
                 }
             }
@@ -188,36 +277,72 @@ fun NewJobScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun JobItemRow(item: JobItem, onRemove: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val icon: ImageBitmap? = item.icon.value
-        if (icon != null) {
-            Image(
-                bitmap = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp).clip(RoundedCornerShape(4.dp)),
-            )
-        } else {
-            Box(modifier = Modifier.size(24.dp))
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val sizeText = item.sizeBytes.value?.let { humanReadableSize(it) } ?: "…"
+private fun SortHeaderLabel(
+    key: SortKey,
+    helpText: String,
+    activeKey: SortKey,
+    ascending: Boolean,
+    onClick: () -> Unit,
+) {
+    val active = key == activeKey
+    HelpTooltip(helpText) {
+        Row(
+            modifier = Modifier.clickable(onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
-                "${if (item.isDirectory) "DIR" else "FILE"} · $sizeText",
+                key.label,
                 style = MaterialTheme.typography.caption,
-                color = Color.Gray,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             )
+            if (active) {
+                Text(if (ascending) "▲" else "▼", style = MaterialTheme.typography.caption)
+            }
         }
+    }
+}
 
-        IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Delete, contentDescription = "Remove")
+@Composable
+private fun JobItemRow(item: JobItem, onRemove: () -> Unit) {
+    HelpTooltip(item.path, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val icon: ImageBitmap? = item.icon.value
+            if (icon != null) {
+                Image(
+                    bitmap = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp).clip(RoundedCornerShape(4.dp)),
+                )
+            } else {
+                Box(modifier = Modifier.size(24.dp))
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val sizeText = item.sizeBytes.value?.let { humanReadableSize(it) } ?: "…"
+                val fileCountText = if (item.isDirectory) {
+                    item.fileCount.value?.let { count -> " · $count file${if (count == 1) "" else "s"}" } ?: ""
+                } else {
+                    ""
+                }
+                Text(
+                    "${if (item.isDirectory) "DIR" else "FILE"} · $sizeText$fileCountText",
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray,
+                )
+            }
+
+            HelpTooltip(HelpTexts["newJob.removeItem"]) {
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Remove")
+                }
+            }
         }
     }
 }

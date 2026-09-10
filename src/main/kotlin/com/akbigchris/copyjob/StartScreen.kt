@@ -38,26 +38,25 @@ fun StartScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.Bottom,
             ) {
-                Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
-                    Text("New job")
+                HelpTooltip(HelpTexts["start.new"], modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
+                        Text("New job")
+                    }
                 }
-                Button(
-                    onClick = onOpen,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) {
-                    Text("Open job")
+                HelpTooltip(HelpTexts["start.open"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                    Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
+                        Text("Open job")
+                    }
                 }
-                Button(
-                    onClick = onHelp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) {
-                    Text("Help")
+                HelpTooltip(HelpTexts["start.help"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                    Button(onClick = onHelp, modifier = Modifier.fillMaxWidth()) {
+                        Text("Help")
+                    }
                 }
-                OutlinedButton(
-                    onClick = onExit,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) {
-                    Text("Exit")
+                HelpTooltip(HelpTexts["start.exit"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                    OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
+                        Text("Exit")
+                    }
                 }
             }
         }

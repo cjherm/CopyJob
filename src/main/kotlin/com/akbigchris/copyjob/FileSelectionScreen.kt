@@ -79,15 +79,17 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                     singleLine = true,
                     label = { Text("JSON file path") },
                 )
-                OutlinedButton(onClick = {
-                    coroutineScope.launch {
-                        val chosen = withContext(Dispatchers.IO) { pickJsonFile(jsonPath) }
-                        if (chosen != null) {
-                            jsonPath = chosen
+                HelpTooltip(HelpTexts["fileSelection.browse"]) {
+                    OutlinedButton(onClick = {
+                        coroutineScope.launch {
+                            val chosen = withContext(Dispatchers.IO) { pickJsonFile(jsonPath) }
+                            if (chosen != null) {
+                                jsonPath = chosen
+                            }
                         }
+                    }) {
+                        Text("Browse…")
                     }
-                }) {
-                    Text("Browse…")
                 }
             }
 
@@ -98,17 +100,21 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.End,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onBack) {
-                        Text("Back")
+                    HelpTooltip(HelpTexts["fileSelection.back"]) {
+                        OutlinedButton(onClick = onBack) {
+                            Text("Back")
+                        }
                     }
-                    Button(
-                        onClick = {
-                            AppPreferences.lastJsonPath = jsonPath
-                            onNext()
-                        },
-                        enabled = isValid,
-                    ) {
-                        Text("Next")
+                    HelpTooltip(HelpTexts["fileSelection.next"]) {
+                        Button(
+                            onClick = {
+                                AppPreferences.lastJsonPath = jsonPath
+                                onNext()
+                            },
+                            enabled = isValid,
+                        ) {
+                            Text("Next")
+                        }
                     }
                 }
             }

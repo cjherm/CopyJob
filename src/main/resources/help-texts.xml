@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<helpTexts>
+    <helpText id="start.new">dummy help text</helpText>
+    <helpText id="start.open">dummy help text</helpText>
+    <helpText id="start.help">dummy help text</helpText>
+    <helpText id="start.exit">dummy help text</helpText>
+
+    <helpText id="placeholder.back">dummy help text</helpText>
+
+    <helpText id="fileSelection.browse">dummy help text</helpText>
+    <helpText id="fileSelection.back">dummy help text</helpText>
+    <helpText id="fileSelection.next">dummy help text</helpText>
+
+    <helpText id="newJob.add">dummy help text</helpText>
+    <helpText id="newJob.back">dummy help text</helpText>
+    <helpText id="newJob.next">dummy help text</helpText>
+    <helpText id="newJob.sortByName">dummy help text</helpText>
+    <helpText id="newJob.sortByType">dummy help text</helpText>
+    <helpText id="newJob.sortBySize">dummy help text</helpText>
+    <helpText id="newJob.removeItem">dummy help text</helpText>
+</helpTexts>
