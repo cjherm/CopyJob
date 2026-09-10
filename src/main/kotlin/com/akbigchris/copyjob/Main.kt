@@ -4,9 +4,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 
@@ -20,7 +22,10 @@ private enum class Screen(val windowSize: DpSize) {
 
 fun main() = application {
     var screen by remember { mutableStateOf(Screen.Start) }
-    val windowState = rememberWindowState(size = screen.windowSize)
+    val windowState = rememberWindowState(
+        size = screen.windowSize,
+        position = WindowPosition(Alignment.Center),
+    )
 
     fun navigateTo(target: Screen) {
         screen = target

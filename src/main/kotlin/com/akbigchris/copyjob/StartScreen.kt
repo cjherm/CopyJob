@@ -27,25 +27,38 @@ fun StartScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
             Text("CopyJob", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             Text(
                 "Welcome to CopyJob!\nLet's get the job done!",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 textAlign = TextAlign.Center,
             )
-            Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
-                Text("New job")
-            }
-            Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
-                Text("Open job")
-            }
-            Button(onClick = onHelp, modifier = Modifier.fillMaxWidth()) {
-                Text("Help")
-            }
-            OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
-                Text("Exit")
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
+                    Text("New job")
+                }
+                Button(
+                    onClick = onOpen,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                ) {
+                    Text("Open job")
+                }
+                Button(
+                    onClick = onHelp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                ) {
+                    Text("Help")
+                }
+                OutlinedButton(
+                    onClick = onExit,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                ) {
+                    Text("Exit")
+                }
             }
         }
     }
