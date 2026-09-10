@@ -52,7 +52,7 @@ private fun pickJsonFile(currentPath: String): String? {
 }
 
 @Composable
-fun FileSelectionScreen(onNext: () -> Unit, onCancel: () -> Unit) {
+fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
     var jsonPath by remember {
         mutableStateOf(AppPreferences.lastJsonPath?.takeIf { isValidJsonFile(it) } ?: "")
     }
@@ -64,6 +64,7 @@ fun FileSelectionScreen(onNext: () -> Unit, onCancel: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Text("Open job", style = MaterialTheme.typography.h6)
             Text("Select a JSON file to continue")
 
             Row(
@@ -94,8 +95,8 @@ fun FileSelectionScreen(onNext: () -> Unit, onCancel: () -> Unit) {
                 horizontalArrangement = Arrangement.End,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onCancel) {
-                        Text("Cancel")
+                    OutlinedButton(onClick = onBack) {
+                        Text("Back")
                     }
                     Button(
                         onClick = {
