@@ -24,7 +24,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "com.akbigchris.copyjob.MainKt"
 
         nativeDistributions {
             // Windows is the primary target; other formats are included for convenience.
