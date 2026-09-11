@@ -90,7 +90,7 @@ private fun pickFilesAndDirs(): List<File> {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun NewJobScreen(onBack: () -> Unit) {
+fun NewJobScreen(onBack: () -> Unit, onNext: (Long) -> Unit) {
     val items = remember { mutableStateListOf<JobItem>() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -266,7 +266,7 @@ fun NewJobScreen(onBack: () -> Unit) {
                         }
                     }
                     HelpTooltip(HelpTexts["newJob.next"]) {
-                        Button(onClick = { /* not wired up yet */ }, enabled = nextEnabled) {
+                        Button(onClick = { onNext(totalSize) }, enabled = nextEnabled) {
                             Text("Next")
                         }
                     }

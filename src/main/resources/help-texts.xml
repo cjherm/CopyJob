@@ -18,4 +18,12 @@
     <helpText id="newJob.sortByType">dummy help text</helpText>
     <helpText id="newJob.sortBySize">dummy help text</helpText>
     <helpText id="newJob.removeItem">dummy help text</helpText>
+
+    <helpText id="destination.add">dummy help text</helpText>
+    <helpText id="destination.back">dummy help text</helpText>
+    <helpText id="destination.calculate">dummy help text</helpText>
+    <helpText id="destination.save">dummy help text</helpText>
+    <helpText id="destination.start">dummy help text</helpText>
+    <helpText id="destination.reorder">dummy help text</helpText>
+    <helpText id="destination.removeItem">dummy help text</helpText>
 </helpTexts>

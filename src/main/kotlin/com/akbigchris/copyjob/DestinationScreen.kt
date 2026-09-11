@@ -1,0 +1,399 @@
+package com.akbigchris.copyjob
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.Divider
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragData
+import androidx.compose.ui.draganddrop.dragData
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.URI
+import javax.swing.JFileChooser
+import kotlin.math.roundToInt
+
+private val rowHeight = 44.dp
+
+private class DestinationItem(val path: String) {
+    val name: String = File(path).name.ifEmpty { path }
+    val icon = mutableStateOf<ImageBitmap?>(null)
+}
+
+private fun uriStringToFile(uriString: String): File? =
+    runCatching { File(URI(uriString)) }.getOrNull()
+
+private fun pickDirectories(): List<File> {
+    val chooser = JFileChooser()
+    chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+    chooser.isMultiSelectionEnabled = true
+    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFiles.toList()
+    } else {
+        emptyList()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@Composable
+fun DestinationScreen(requiredBytes: Long, onBack: () -> Unit, onSave: () -> Unit, onStart: () -> Unit) {
+    val destinations = remember { mutableStateListOf<DestinationItem>() }
+    val coroutineScope = rememberCoroutineScope()
+
+    var isCalculating by remember { mutableStateOf(false) }
+    // Reset whenever the destination set changes, since a previous result no longer applies.
+    var availableBytes by remember { mutableStateOf<Long?>(null) }
+
+    fun addDirectories(files: List<File>) {
+        for (file in files) {
+            if (!file.isDirectory) continue
+            val path = file.absolutePath
+            if (destinations.any { it.path == path }) continue
+
+            val item = DestinationItem(path)
+            destinations.add(item)
+            availableBytes = null
+
+            coroutineScope.launch(Dispatchers.IO) {
+                item.icon.value = runCatching { loadSystemIcon(file) }.getOrNull()
+            }
+        }
+    }
+
+    fun removeDirectory(item: DestinationItem) {
+        destinations.remove(item)
+        availableBytes = null
+    }
+
+    fun calculate() {
+        isCalculating = true
+        coroutineScope.launch {
+            val total = withContext(Dispatchers.IO) {
+                destinations.sumOf { runCatching { File(it.path).usableSpace }.getOrDefault(0L) }
+            }
+            availableBytes = total
+            isCalculating = false
+        }
+    }
+
+    val hasEnoughSpace = availableBytes?.let { it >= requiredBytes } ?: false
+
+    MaterialTheme {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Select destination directories",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.weight(1f),
+                )
+                HelpTooltip(HelpTexts["destination.add"]) {
+                    Button(onClick = { addDirectories(pickDirectories()) }) {
+                        Text("Add")
+                    }
+                }
+            }
+
+            Text(
+                "Items will be copied to these destinations in order — drag ⠿⠿ to reorder",
+                style = MaterialTheme.typography.caption,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+
+            var isDragging by remember { mutableStateOf(false) }
+
+            val dropTarget = remember {
+                object : DragAndDropTarget {
+                    override fun onEntered(event: DragAndDropEvent) {
+                        isDragging = true
+                    }
+
+                    override fun onExited(event: DragAndDropEvent) {
+                        isDragging = false
+                    }
+
+                    override fun onEnded(event: DragAndDropEvent) {
+                        isDragging = false
+                    }
+
+                    override fun onDrop(event: DragAndDropEvent): Boolean {
+                        isDragging = false
+                        val data = event.dragData()
+                        if (data is DragData.FilesList) {
+                            addDirectories(data.readFiles().mapNotNull(::uriStringToFile))
+                            return true
+                        }
+                        return false
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = 12.dp)
+                    .border(
+                        width = if (isDragging) 2.dp else 1.dp,
+                        color = if (isDragging) MaterialTheme.colors.primary else Color.Gray,
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .dragAndDropTarget(
+                        shouldStartDragAndDrop = { true },
+                        target = dropTarget,
+                    ),
+            ) {
+                if (destinations.isEmpty()) {
+                    Text(
+                        "Drag destination folders here",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Color.Gray,
+                    )
+                } else {
+                    DestinationList(destinations, onRemove = ::removeDirectory)
+                }
+            }
+
+            Text(
+                "Space required for selected items: ${humanReadableSize(requiredBytes)}",
+                modifier = Modifier.padding(top = 12.dp),
+            )
+
+            Text(
+                when {
+                    destinations.isEmpty() -> "Add at least one destination directory to continue"
+                    isCalculating -> "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — CALCULATING..."
+                    availableBytes == null ->
+                        "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — click Calculate to check available space"
+                    else ->
+                        "Available space: ${humanReadableSize(availableBytes!!)}" +
+                            if (hasEnoughSpace) " — enough space" else " — not enough space"
+                },
+                color = when {
+                    destinations.isEmpty() || isCalculating || availableBytes == null -> Color.Unspecified
+                    hasEnoughSpace -> Color(0xFF2E7D32)
+                    else -> MaterialTheme.colors.error
+                },
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HelpTooltip(HelpTexts["destination.back"]) {
+                        OutlinedButton(onClick = onBack) {
+                            Text("Back")
+                        }
+                    }
+                    HelpTooltip(HelpTexts["destination.calculate"]) {
+                        Button(onClick = ::calculate, enabled = destinations.isNotEmpty() && !isCalculating) {
+                            Text("Calculate")
+                        }
+                    }
+                    HelpTooltip(HelpTexts["destination.save"]) {
+                        Button(onClick = onSave, enabled = destinations.isNotEmpty()) {
+                            Text("Save")
+                        }
+                    }
+                    HelpTooltip(HelpTexts["destination.start"]) {
+                        Button(onClick = onStart, enabled = hasEnoughSpace) {
+                            Text("Start")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DestinationList(destinations: SnapshotStateList<DestinationItem>, onRemove: (DestinationItem) -> Unit) {
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val rowHeightPx = with(density) { rowHeight.toPx() }
+    val draggingItem = remember { mutableStateOf<DestinationItem?>(null) }
+    val dragOffset = remember { mutableStateOf(0f) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().padding(8.dp).padding(end = 12.dp),
+        ) {
+            itemsIndexed(destinations, key = { _, item -> item.path }) { index, item ->
+                DestinationRow(
+                    item = item,
+                    index = index,
+                    destinations = destinations,
+                    rowHeightPx = rowHeightPx,
+                    draggingItem = draggingItem,
+                    dragOffset = dragOffset,
+                    onRemove = { onRemove(item) },
+                )
+                Divider()
+            }
+        }
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(listState),
+        )
+    }
+}
+
+/**
+ * Position during drag is resolved live via `destinations.indexOf(item)` rather than the
+ * [index] parameter, since the pointerInput drag-gesture coroutine is only launched once
+ * per [item] and would otherwise keep using a stale index after earlier reorders.
+ */
+@Composable
+private fun DestinationRow(
+    item: DestinationItem,
+    index: Int,
+    destinations: SnapshotStateList<DestinationItem>,
+    rowHeightPx: Float,
+    draggingItem: MutableState<DestinationItem?>,
+    dragOffset: MutableState<Float>,
+    onRemove: () -> Unit,
+) {
+    val isDragged = draggingItem.value === item
+
+    HelpTooltip(
+        item.path,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .zIndex(if (isDragged) 1f else 0f)
+            .graphicsLayer { translationY = if (isDragged) dragOffset.value else 0f },
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "${index + 1}.",
+                style = MaterialTheme.typography.subtitle2,
+                modifier = Modifier.width(28.dp),
+            )
+
+            val icon = item.icon.value
+            if (icon != null) {
+                Image(
+                    bitmap = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp).clip(RoundedCornerShape(4.dp)),
+                )
+            } else {
+                Box(modifier = Modifier.size(24.dp))
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                item.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+
+            HelpTooltip(HelpTexts["destination.reorder"]) {
+                Text(
+                    "⠿⠿",
+                    style = MaterialTheme.typography.h6,
+                    color = Color.Gray,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .pointerInput(item.path) {
+                            detectDragGestures(
+                                onDragStart = {
+                                    draggingItem.value = item
+                                    dragOffset.value = 0f
+                                },
+                                onDragEnd = {
+                                    draggingItem.value = null
+                                    dragOffset.value = 0f
+                                },
+                                onDragCancel = {
+                                    draggingItem.value = null
+                                    dragOffset.value = 0f
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    dragOffset.value += amount.y
+                                    val from = destinations.indexOf(item)
+                                    if (from == -1) return@detectDragGestures
+                                    val shift = (dragOffset.value / rowHeightPx).roundToInt()
+                                    val target = (from + shift).coerceIn(0, destinations.lastIndex)
+                                    if (target != from) {
+                                        destinations.removeAt(from)
+                                        destinations.add(target, item)
+                                        dragOffset.value -= (target - from) * rowHeightPx
+                                    }
+                                },
+                            )
+                        },
+                )
+            }
+
+            HelpTooltip(HelpTexts["destination.removeItem"]) {
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Remove")
+                }
+            }
+        }
+    }
+}

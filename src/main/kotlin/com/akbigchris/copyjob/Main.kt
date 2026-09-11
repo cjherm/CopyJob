@@ -15,6 +15,7 @@ import androidx.compose.ui.window.rememberWindowState
 private enum class Screen(val windowSize: DpSize) {
     Start(DpSize(360.dp, 480.dp)),
     New(DpSize(640.dp, 560.dp)),
+    Destination(DpSize(640.dp, 560.dp)),
     OpenFile(DpSize(600.dp, 320.dp)),
     OpenNext(DpSize(480.dp, 340.dp)),
     Help(DpSize(480.dp, 340.dp)),
@@ -22,6 +23,7 @@ private enum class Screen(val windowSize: DpSize) {
 
 fun main() = application {
     var screen by remember { mutableStateOf(Screen.Start) }
+    var requiredBytes by remember { mutableStateOf(0L) }
     val windowState = rememberWindowState(
         size = screen.windowSize,
         position = WindowPosition(Alignment.Center),
@@ -44,7 +46,19 @@ fun main() = application {
                 onHelp = { navigateTo(Screen.Help) },
                 onExit = ::exitApplication,
             )
-            Screen.New -> NewJobScreen(onBack = { navigateTo(Screen.Start) })
+            Screen.New -> NewJobScreen(
+                onBack = { navigateTo(Screen.Start) },
+                onNext = { bytes ->
+                    requiredBytes = bytes
+                    navigateTo(Screen.Destination)
+                },
+            )
+            Screen.Destination -> DestinationScreen(
+                requiredBytes = requiredBytes,
+                onBack = { navigateTo(Screen.New) },
+                onSave = { /* not wired up yet */ },
+                onStart = { /* not wired up yet */ },
+            )
             Screen.OpenFile -> FileSelectionScreen(
                 onNext = { navigateTo(Screen.OpenNext) },
                 onBack = { navigateTo(Screen.Start) },
