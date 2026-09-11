@@ -25,6 +25,7 @@ fun HelpTooltip(text: String, modifier: Modifier = Modifier, content: @Composabl
             }
         },
         modifier = modifier,
+        delayMillis = 1000,
         content = content,
     )
 }
