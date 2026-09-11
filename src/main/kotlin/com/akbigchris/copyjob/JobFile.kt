@@ -20,9 +20,12 @@ private fun jsonEscape(value: String): String = buildString {
 
 private fun jsonString(value: String): String = "\"${jsonEscape(value)}\""
 
-fun buildJobJson(items: List<SelectedItem>, destinationPaths: List<String>): String = buildString {
+/** A destination directory plus the percentage of its free space that may be used. */
+data class DestinationEntry(val path: String, val percent: Int)
+
+fun buildJobJson(items: List<SelectedItem>, destinations: List<DestinationEntry>): String = buildString {
     append("{\n")
-    append("  \"items\": [\n")
+    append("  \"itemsToCopy\": [\n")
     items.forEachIndexed { index, item ->
         append("    {\n")
         append("      \"path\": ${jsonString(item.path)},\n")
@@ -36,12 +39,13 @@ fun buildJobJson(items: List<SelectedItem>, destinationPaths: List<String>): Str
     }
     append("  ],\n")
     append("  \"destinations\": [\n")
-    destinationPaths.forEachIndexed { index, path ->
+    destinations.forEachIndexed { index, dest ->
         append("    {\n")
-        append("      \"path\": ${jsonString(path)},\n")
-        append("      \"order\": ${index + 1}\n")
+        append("      \"path\": ${jsonString(dest.path)},\n")
+        append("      \"order\": ${index + 1},\n")
+        append("      \"percent\": ${dest.percent}\n")
         append("    }")
-        append(if (index != destinationPaths.lastIndex) ",\n" else "\n")
+        append(if (index != destinations.lastIndex) ",\n" else "\n")
     }
     append("  ]\n")
     append("}\n")

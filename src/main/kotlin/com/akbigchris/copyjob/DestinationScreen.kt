@@ -1,10 +1,13 @@
-package com.akbigchris.copyjob
+﻿package com.akbigchris.copyjob
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,12 +26,16 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -54,24 +61,34 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import javax.swing.JFileChooser
 import javax.swing.JOptionPane
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.math.roundToInt
 
 private val rowHeight = 44.dp
+private const val DEFAULT_PERCENT = 80
 
 private class DestinationItem(val path: String) {
     val name: String = File(path).name.ifEmpty { path }
     val icon = mutableStateOf<ImageBitmap?>(null)
+
+    /** Percentage of this directory's free space that may be used, editable by the user. */
+    val percent = mutableStateOf(DEFAULT_PERCENT)
 }
 
 private fun uriStringToFile(uriString: String): File? =
@@ -88,22 +105,26 @@ private fun pickDirectories(): List<File> {
     }
 }
 
+private val saveFileNameFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd'__'HH_mm_ss")
+
+/** e.g. "2026_09_11__18_05_22.json" */
+private fun defaultSaveFileName(): String = "${LocalDateTime.now().format(saveFileNameFormatter)}.json"
+
 /** Prompts for a destination .json file, appending the extension and confirming overwrite as needed. */
 private fun pickSaveJsonFile(): File? {
     val chooser = JFileChooser()
     chooser.fileFilter = FileNameExtensionFilter("JSON files (*.json)", "json")
-    val lastPath = AppPreferences.lastJsonPath
-    val lastFile = lastPath?.let(::File)
-    when {
-        lastFile != null && lastFile.isFile -> {
-            chooser.currentDirectory = lastFile.parentFile
-            chooser.selectedFile = lastFile
-        }
-        lastFile != null && lastFile.isDirectory -> {
-            chooser.currentDirectory = lastFile
-            chooser.selectedFile = File(lastFile, "copyjob.json")
-        }
-        else -> chooser.selectedFile = File("copyjob.json")
+    val lastFile = AppPreferences.lastJsonPath?.let(::File)
+    val lastDirectory = when {
+        lastFile != null && lastFile.isFile -> lastFile.parentFile
+        lastFile != null && lastFile.isDirectory -> lastFile
+        else -> null
+    }
+    if (lastDirectory != null) chooser.currentDirectory = lastDirectory
+    chooser.selectedFile = if (lastDirectory != null) {
+        File(lastDirectory, defaultSaveFileName())
+    } else {
+        File(defaultSaveFileName())
     }
 
     if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return null
@@ -136,6 +157,7 @@ fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onS
     val requiredBytes = selectedItems.sumOf { it.sizeBytes }
 
     var isCalculating by remember { mutableStateOf(false) }
+    var calculateJob by remember { mutableStateOf<Job?>(null) }
     // Reset whenever the destination set changes, since a previous result no longer applies.
     var availableBytes by remember { mutableStateOf<Long?>(null) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
@@ -161,23 +183,49 @@ fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onS
         availableBytes = null
     }
 
+    fun setPercent(item: DestinationItem, value: Int) {
+        item.percent.value = value.coerceIn(0, 100)
+        availableBytes = null
+    }
+
+    fun resetPercentages() {
+        destinations.forEach { it.percent.value = DEFAULT_PERCENT }
+        if (destinations.isNotEmpty()) availableBytes = null
+    }
+
     fun calculate() {
         isCalculating = true
-        coroutineScope.launch {
+        val snapshot = destinations.map { it.path to it.percent.value }
+        calculateJob = coroutineScope.launch {
             val total = withContext(Dispatchers.IO) {
-                destinations.sumOf { runCatching { File(it.path).usableSpace }.getOrDefault(0L) }
+                var sum = 0L
+                for ((path, percent) in snapshot) {
+                    // Checked between directories so Abort takes effect promptly even on slow (e.g. network) drives.
+                    ensureActive()
+                    val usable = runCatching { File(path).usableSpace }.getOrDefault(0L)
+                    sum += usable * percent / 100L
+                }
+                sum
             }
             availableBytes = total
             isCalculating = false
+            calculateJob = null
         }
+    }
+
+    fun abortCalculate() {
+        calculateJob?.cancel()
+        calculateJob = null
+        availableBytes = null
+        isCalculating = false
     }
 
     fun save() {
         val file = pickSaveJsonFile() ?: return
-        val destinationPaths = destinations.map { it.path }
+        val destinationEntries = destinations.map { DestinationEntry(it.path, it.percent.value) }
         coroutineScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { file.writeText(buildJobJson(selectedItems, destinationPaths)) }
+                runCatching { file.writeText(buildJobJson(selectedItems, destinationEntries)) }
             }
             saveMessage = if (result.isSuccess) {
                 AppPreferences.lastJsonPath = file.absolutePath
@@ -191,149 +239,193 @@ fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onS
     val hasEnoughSpace = availableBytes?.let { it >= requiredBytes } ?: false
 
     MaterialTheme {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Select destination directories",
-                    style = MaterialTheme.typography.h6,
-                    modifier = Modifier.weight(1f),
-                )
-                HelpTooltip(HelpTexts["destination.add"]) {
-                    Button(onClick = { addDirectories(pickDirectories()) }) {
-                        Text("Add")
-                    }
-                }
-            }
-
-            Text(
-                "Items will be copied to these destinations in order — drag ⠿⠿ to reorder",
-                style = MaterialTheme.typography.caption,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-
-            var isDragging by remember { mutableStateOf(false) }
-
-            val dropTarget = remember {
-                object : DragAndDropTarget {
-                    override fun onEntered(event: DragAndDropEvent) {
-                        isDragging = true
-                    }
-
-                    override fun onExited(event: DragAndDropEvent) {
-                        isDragging = false
-                    }
-
-                    override fun onEnded(event: DragAndDropEvent) {
-                        isDragging = false
-                    }
-
-                    override fun onDrop(event: DragAndDropEvent): Boolean {
-                        isDragging = false
-                        val data = event.dragData()
-                        if (data is DragData.FilesList) {
-                            addDirectories(data.readFiles().mapNotNull(::uriStringToFile))
-                            return true
-                        }
-                        return false
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(top = 12.dp)
-                    .border(
-                        width = if (isDragging) 2.dp else 1.dp,
-                        color = if (isDragging) MaterialTheme.colors.primary else Color.Gray,
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .dragAndDropTarget(
-                        shouldStartDragAndDrop = { true },
-                        target = dropTarget,
-                    ),
-            ) {
-                if (destinations.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        "Drag destination folders here",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color.Gray,
+                        "Select destination directories",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.weight(1f),
                     )
-                } else {
-                    DestinationList(destinations, onRemove = ::removeDirectory)
-                }
-            }
-
-            Text(
-                "Space required for selected items: ${humanReadableSize(requiredBytes)}",
-                modifier = Modifier.padding(top = 12.dp),
-            )
-
-            Text(
-                when {
-                    destinations.isEmpty() -> "Add at least one destination directory to continue"
-                    isCalculating -> "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — CALCULATING..."
-                    availableBytes == null ->
-                        "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — click Calculate to check available space"
-                    else ->
-                        "Available space: ${humanReadableSize(availableBytes!!)}" +
-                            if (hasEnoughSpace) " — enough space" else " — not enough space"
-                },
-                color = when {
-                    destinations.isEmpty() || isCalculating || availableBytes == null -> Color.Unspecified
-                    hasEnoughSpace -> Color(0xFF2E7D32)
-                    else -> MaterialTheme.colors.error
-                },
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HelpTooltip(HelpTexts["destination.back"]) {
-                        OutlinedButton(onClick = onBack) {
-                            Text("Back")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HelpTooltip(HelpTexts["destination.resetPercent"]) {
+                            OutlinedButton(onClick = ::resetPercentages, enabled = destinations.isNotEmpty()) {
+                                Text("Reset")
+                            }
                         }
-                    }
-                    HelpTooltip(HelpTexts["destination.calculate"]) {
-                        Button(onClick = ::calculate, enabled = destinations.isNotEmpty() && !isCalculating) {
-                            Text("Calculate")
-                        }
-                    }
-                    HelpTooltip(HelpTexts["destination.save"]) {
-                        Button(onClick = ::save, enabled = destinations.isNotEmpty()) {
-                            Text("Save")
-                        }
-                    }
-                    HelpTooltip(HelpTexts["destination.start"]) {
-                        Button(onClick = onStart, enabled = hasEnoughSpace) {
-                            Text("Start")
+                        HelpTooltip(HelpTexts["destination.add"]) {
+                            Button(onClick = { addDirectories(pickDirectories()) }) {
+                                Text("Add")
+                            }
                         }
                     }
                 }
-            }
 
-            val message = saveMessage
-            if (message != null) {
                 Text(
-                    message,
+                    "Items will be copied to these destinations in order — drag ⠿⠿ to reorder · " +
+                        "% caps how much of that destination's free space to use",
                     style = MaterialTheme.typography.caption,
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+
+                var isDragging by remember { mutableStateOf(false) }
+
+                val dropTarget = remember {
+                    object : DragAndDropTarget {
+                        override fun onEntered(event: DragAndDropEvent) {
+                            isDragging = true
+                        }
+
+                        override fun onExited(event: DragAndDropEvent) {
+                            isDragging = false
+                        }
+
+                        override fun onEnded(event: DragAndDropEvent) {
+                            isDragging = false
+                        }
+
+                        override fun onDrop(event: DragAndDropEvent): Boolean {
+                            isDragging = false
+                            val data = event.dragData()
+                            if (data is DragData.FilesList) {
+                                addDirectories(data.readFiles().mapNotNull(::uriStringToFile))
+                                return true
+                            }
+                            return false
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(top = 12.dp)
+                        .border(
+                            width = if (isDragging) 2.dp else 1.dp,
+                            color = if (isDragging) MaterialTheme.colors.primary else Color.Gray,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .dragAndDropTarget(
+                            shouldStartDragAndDrop = { true },
+                            target = dropTarget,
+                        ),
+                ) {
+                    if (destinations.isEmpty()) {
+                        Text(
+                            "Drag destination folders here",
+                            modifier = Modifier.align(Alignment.Center),
+                            color = Color.Gray,
+                        )
+                    } else {
+                        DestinationList(destinations, onRemove = ::removeDirectory, onPercentChange = ::setPercent)
+                    }
+                }
+
+                Text(
+                    "Space required for selected items: ${humanReadableSize(requiredBytes)}",
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+
+                Text(
+                    when {
+                        destinations.isEmpty() -> "Add at least one destination directory to continue"
+                        isCalculating -> "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — CALCULATING..."
+                        availableBytes == null ->
+                            "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — click Calculate to check available space"
+                        else ->
+                            "Available space: ${humanReadableSize(availableBytes!!)}" +
+                                if (hasEnoughSpace) " — enough space" else " — not enough space"
+                    },
+                    color = when {
+                        destinations.isEmpty() || isCalculating || availableBytes == null -> Color.Unspecified
+                        hasEnoughSpace -> Color(0xFF2E7D32)
+                        else -> MaterialTheme.colors.error
+                    },
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HelpTooltip(HelpTexts["destination.back"]) {
+                            OutlinedButton(onClick = onBack) {
+                                Text("Back")
+                            }
+                        }
+                        HelpTooltip(HelpTexts["destination.calculate"]) {
+                            Button(onClick = ::calculate, enabled = destinations.isNotEmpty() && !isCalculating) {
+                                Text("Calculate")
+                            }
+                        }
+                        HelpTooltip(HelpTexts["destination.save"]) {
+                            Button(onClick = ::save, enabled = destinations.isNotEmpty()) {
+                                Text("Save")
+                            }
+                        }
+                        HelpTooltip(HelpTexts["destination.start"]) {
+                            Button(onClick = onStart, enabled = hasEnoughSpace) {
+                                Text("Start")
+                            }
+                        }
+                    }
+                }
+
+                val message = saveMessage
+                if (message != null) {
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+
+            if (isCalculating) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.45f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(shape = RoundedCornerShape(8.dp), elevation = 8.dp) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text("Calculating…", style = MaterialTheme.typography.subtitle1)
+                            CircularProgressIndicator()
+                            HelpTooltip(HelpTexts["destination.abortCalculate"]) {
+                                OutlinedButton(onClick = ::abortCalculate) {
+                                    Text("Abort")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DestinationList(destinations: SnapshotStateList<DestinationItem>, onRemove: (DestinationItem) -> Unit) {
+private fun DestinationList(
+    destinations: SnapshotStateList<DestinationItem>,
+    onRemove: (DestinationItem) -> Unit,
+    onPercentChange: (DestinationItem, Int) -> Unit,
+) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val rowHeightPx = with(density) { rowHeight.toPx() }
@@ -354,6 +446,7 @@ private fun DestinationList(destinations: SnapshotStateList<DestinationItem>, on
                     draggingItem = draggingItem,
                     dragOffset = dragOffset,
                     onRemove = { onRemove(item) },
+                    onPercentChange = { onPercentChange(item, it) },
                 )
                 Divider()
             }
@@ -379,6 +472,7 @@ private fun DestinationRow(
     draggingItem: MutableState<DestinationItem?>,
     dragOffset: MutableState<Float>,
     onRemove: () -> Unit,
+    onPercentChange: (Int) -> Unit,
 ) {
     val isDragged = draggingItem.value === item
 
@@ -419,6 +513,10 @@ private fun DestinationRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+
+            PercentEditor(percent = item.percent.value, onPercentChange = onPercentChange)
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             HelpTooltip(HelpTexts["destination.reorder"]) {
                 Text(
@@ -465,5 +563,56 @@ private fun DestinationRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PercentEditor(percent: Int, onPercentChange: (Int) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        HelpTooltip(HelpTexts["destination.percentDecrease"]) {
+            StepButton("−") { onPercentChange(percent - 5) }
+        }
+
+        var text by remember(percent) { mutableStateOf(percent.toString()) }
+        HelpTooltip(HelpTexts["destination.percent"]) {
+            BasicTextField(
+                value = text,
+                onValueChange = { new ->
+                    val filtered = new.filter { it.isDigit() }.take(3)
+                    text = filtered
+                    filtered.toIntOrNull()?.let(onPercentChange)
+                },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.caption.copy(textAlign = TextAlign.Center),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .width(28.dp)
+                    .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
+                    .padding(vertical = 4.dp),
+            )
+        }
+
+        Text("%", style = MaterialTheme.typography.caption)
+
+        HelpTooltip(HelpTexts["destination.percentIncrease"]) {
+            StepButton("+") { onPercentChange(percent + 5) }
+        }
+    }
+}
+
+@Composable
+private fun StepButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(18.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.LightGray.copy(alpha = 0.5f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.caption)
     }
 }
