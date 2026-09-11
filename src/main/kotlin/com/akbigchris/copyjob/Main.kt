@@ -23,7 +23,7 @@ private enum class Screen(val windowSize: DpSize) {
 
 fun main() = application {
     var screen by remember { mutableStateOf(Screen.Start) }
-    var requiredBytes by remember { mutableStateOf(0L) }
+    var selectedItems by remember { mutableStateOf<List<SelectedItem>>(emptyList()) }
     val windowState = rememberWindowState(
         size = screen.windowSize,
         position = WindowPosition(Alignment.Center),
@@ -48,15 +48,14 @@ fun main() = application {
             )
             Screen.New -> NewJobScreen(
                 onBack = { navigateTo(Screen.Start) },
-                onNext = { bytes ->
-                    requiredBytes = bytes
+                onNext = { items ->
+                    selectedItems = items
                     navigateTo(Screen.Destination)
                 },
             )
             Screen.Destination -> DestinationScreen(
-                requiredBytes = requiredBytes,
+                selectedItems = selectedItems,
                 onBack = { navigateTo(Screen.New) },
-                onSave = { /* not wired up yet */ },
                 onStart = { /* not wired up yet */ },
             )
             Screen.OpenFile -> FileSelectionScreen(

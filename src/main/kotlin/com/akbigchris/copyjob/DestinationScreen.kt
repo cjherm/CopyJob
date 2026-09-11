@@ -63,6 +63,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
+import javax.swing.JOptionPane
+import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.math.roundToInt
 
 private val rowHeight = 44.dp
@@ -86,15 +88,57 @@ private fun pickDirectories(): List<File> {
     }
 }
 
+/** Prompts for a destination .json file, appending the extension and confirming overwrite as needed. */
+private fun pickSaveJsonFile(): File? {
+    val chooser = JFileChooser()
+    chooser.fileFilter = FileNameExtensionFilter("JSON files (*.json)", "json")
+    val lastPath = AppPreferences.lastJsonPath
+    val lastFile = lastPath?.let(::File)
+    when {
+        lastFile != null && lastFile.isFile -> {
+            chooser.currentDirectory = lastFile.parentFile
+            chooser.selectedFile = lastFile
+        }
+        lastFile != null && lastFile.isDirectory -> {
+            chooser.currentDirectory = lastFile
+            chooser.selectedFile = File(lastFile, "copyjob.json")
+        }
+        else -> chooser.selectedFile = File("copyjob.json")
+    }
+
+    if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return null
+
+    val chosen = chooser.selectedFile
+    val file = if (chosen.extension.equals("json", ignoreCase = true)) {
+        chosen
+    } else {
+        File(chosen.parentFile, "${chosen.name}.json")
+    }
+
+    if (file.exists()) {
+        val overwrite = JOptionPane.showConfirmDialog(
+            null,
+            "${file.name} already exists. Overwrite it?",
+            "Overwrite file?",
+            JOptionPane.YES_NO_OPTION,
+        ) == JOptionPane.YES_OPTION
+        if (!overwrite) return null
+    }
+
+    return file
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun DestinationScreen(requiredBytes: Long, onBack: () -> Unit, onSave: () -> Unit, onStart: () -> Unit) {
+fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onStart: () -> Unit) {
     val destinations = remember { mutableStateListOf<DestinationItem>() }
     val coroutineScope = rememberCoroutineScope()
+    val requiredBytes = selectedItems.sumOf { it.sizeBytes }
 
     var isCalculating by remember { mutableStateOf(false) }
     // Reset whenever the destination set changes, since a previous result no longer applies.
     var availableBytes by remember { mutableStateOf<Long?>(null) }
+    var saveMessage by remember { mutableStateOf<String?>(null) }
 
     fun addDirectories(files: List<File>) {
         for (file in files) {
@@ -125,6 +169,22 @@ fun DestinationScreen(requiredBytes: Long, onBack: () -> Unit, onSave: () -> Uni
             }
             availableBytes = total
             isCalculating = false
+        }
+    }
+
+    fun save() {
+        val file = pickSaveJsonFile() ?: return
+        val destinationPaths = destinations.map { it.path }
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { file.writeText(buildJobJson(selectedItems, destinationPaths)) }
+            }
+            saveMessage = if (result.isSuccess) {
+                AppPreferences.lastJsonPath = file.absolutePath
+                "Saved to ${file.name}"
+            } else {
+                "Save failed: ${result.exceptionOrNull()?.message ?: "unknown error"}"
+            }
         }
     }
 
@@ -247,7 +307,7 @@ fun DestinationScreen(requiredBytes: Long, onBack: () -> Unit, onSave: () -> Uni
                         }
                     }
                     HelpTooltip(HelpTexts["destination.save"]) {
-                        Button(onClick = onSave, enabled = destinations.isNotEmpty()) {
+                        Button(onClick = ::save, enabled = destinations.isNotEmpty()) {
                             Text("Save")
                         }
                     }
@@ -257,6 +317,16 @@ fun DestinationScreen(requiredBytes: Long, onBack: () -> Unit, onSave: () -> Uni
                         }
                     }
                 }
+            }
+
+            val message = saveMessage
+            if (message != null) {
+                Text(
+                    message,
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
     }

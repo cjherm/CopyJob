@@ -14,6 +14,9 @@ class JobItem(val path: String, val isDirectory: Boolean) {
     val icon = mutableStateOf<ImageBitmap?>(null)
 }
 
+/** Immutable snapshot of a [JobItem], taken once its size is known, to hand off to later screens. */
+data class SelectedItem(val path: String, val isDirectory: Boolean, val sizeBytes: Long, val fileCount: Int?)
+
 fun loadSystemIcon(file: File): ImageBitmap? {
     val icon = FileSystemView.getFileSystemView().getSystemIcon(file) ?: return null
     val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_ARGB)
