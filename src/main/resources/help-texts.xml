@@ -24,11 +24,15 @@
     <helpText id="destination.calculate">dummy help text</helpText>
     <helpText id="destination.abortCalculate">dummy help text</helpText>
     <helpText id="destination.save">dummy help text</helpText>
-    <helpText id="destination.start">dummy help text</helpText>
+    <helpText id="destination.next">dummy help text</helpText>
     <helpText id="destination.reorder">dummy help text</helpText>
     <helpText id="destination.removeItem">dummy help text</helpText>
     <helpText id="destination.resetPercent">dummy help text</helpText>
     <helpText id="destination.percent">dummy help text</helpText>
     <helpText id="destination.percentDecrease">dummy help text</helpText>
     <helpText id="destination.percentIncrease">dummy help text</helpText>
+
+    <helpText id="summary.back">dummy help text</helpText>
+    <helpText id="summary.start">dummy help text</helpText>
+    <helpText id="summary.abortSummarize">dummy help text</helpText>
 </helpTexts>

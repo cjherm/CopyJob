@@ -16,6 +16,7 @@ private enum class Screen(val windowSize: DpSize) {
     Start(DpSize(360.dp, 480.dp)),
     New(DpSize(640.dp, 560.dp)),
     Destination(DpSize(640.dp, 560.dp)),
+    Summary(DpSize(640.dp, 680.dp)),
     OpenFile(DpSize(600.dp, 320.dp)),
     OpenNext(DpSize(480.dp, 340.dp)),
     Help(DpSize(480.dp, 340.dp)),
@@ -24,6 +25,7 @@ private enum class Screen(val windowSize: DpSize) {
 fun main() = application {
     var screen by remember { mutableStateOf(Screen.Start) }
     var selectedItems by remember { mutableStateOf<List<SelectedItem>>(emptyList()) }
+    var destinationEntries by remember { mutableStateOf<List<DestinationEntry>>(emptyList()) }
     val windowState = rememberWindowState(
         size = screen.windowSize,
         position = WindowPosition(Alignment.Center),
@@ -55,7 +57,17 @@ fun main() = application {
             )
             Screen.Destination -> DestinationScreen(
                 selectedItems = selectedItems,
+                initialDestinations = destinationEntries,
                 onBack = { navigateTo(Screen.New) },
+                onNext = { entries ->
+                    destinationEntries = entries
+                    navigateTo(Screen.Summary)
+                },
+            )
+            Screen.Summary -> SummaryScreen(
+                selectedItems = selectedItems,
+                destinationEntries = destinationEntries,
+                onBack = { navigateTo(Screen.Destination) },
                 onStart = { /* not wired up yet */ },
             )
             Screen.OpenFile -> FileSelectionScreen(

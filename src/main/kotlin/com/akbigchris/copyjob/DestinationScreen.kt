@@ -40,6 +40,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -151,10 +152,31 @@ private fun pickSaveJsonFile(): File? {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onStart: () -> Unit) {
-    val destinations = remember { mutableStateListOf<DestinationItem>() }
+fun DestinationScreen(
+    selectedItems: List<SelectedItem>,
+    initialDestinations: List<DestinationEntry>,
+    onBack: () -> Unit,
+    onNext: (List<DestinationEntry>) -> Unit,
+) {
+    val destinations = remember {
+        mutableStateListOf<DestinationItem>().apply {
+            initialDestinations.forEach { entry ->
+                add(DestinationItem(entry.path).also { it.percent.value = entry.percent })
+            }
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val requiredBytes = selectedItems.sumOf { it.sizeBytes }
+
+    // Re-load icons for destinations carried over from a previous visit to this screen.
+    LaunchedEffect(Unit) {
+        for (item in destinations) {
+            val file = File(item.path)
+            launch(Dispatchers.IO) {
+                item.icon.value = runCatching { loadSystemIcon(file) }.getOrNull()
+            }
+        }
+    }
 
     var isCalculating by remember { mutableStateOf(false) }
     var calculateJob by remember { mutableStateOf<Job?>(null) }
@@ -368,9 +390,14 @@ fun DestinationScreen(selectedItems: List<SelectedItem>, onBack: () -> Unit, onS
                                 Text("Save")
                             }
                         }
-                        HelpTooltip(HelpTexts["destination.start"]) {
-                            Button(onClick = onStart, enabled = hasEnoughSpace) {
-                                Text("Start")
+                        HelpTooltip(HelpTexts["destination.next"]) {
+                            Button(
+                                onClick = {
+                                    onNext(destinations.map { DestinationEntry(it.path, it.percent.value) })
+                                },
+                                enabled = hasEnoughSpace,
+                            ) {
+                                Text("Next")
                             }
                         }
                     }
