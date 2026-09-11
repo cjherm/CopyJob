@@ -92,7 +92,11 @@ fun SummaryScreen(
                 val result = withContext(Dispatchers.IO) {
                     runCatching { File(jsonPath).writeText(buildJobJson(recalculatedItems, destinationEntries)) }
                 }
-                if (result.isSuccess) "Updated ${File(jsonPath).name}" else "Failed to update saved job file"
+                if (result.isSuccess) {
+                    Texts.get("summary.updatedMessage", File(jsonPath).name)
+                } else {
+                    Texts["summary.updateFailedMessage"]
+                }
             } else {
                 null
             }
@@ -129,10 +133,10 @@ fun SummaryScreen(
     MaterialTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                Text("Summary", style = MaterialTheme.typography.h6)
+                Text(Texts["summary.title"], style = MaterialTheme.typography.h6)
 
                 Text(
-                    "Items to copy",
+                    Texts["summary.itemsHeading"],
                     style = MaterialTheme.typography.subtitle2,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -146,13 +150,13 @@ fun SummaryScreen(
                     ItemsList(items)
                 }
                 Text(
-                    "Total size: ${humanReadableSize(requiredBytes)}",
+                    Texts.get("summary.totalSize", humanReadableSize(requiredBytes)),
                     style = MaterialTheme.typography.caption,
                     modifier = Modifier.padding(top = 4.dp),
                 )
 
                 Text(
-                    "Destinations (in order)",
+                    Texts["summary.destinationsHeading"],
                     style = MaterialTheme.typography.subtitle2,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -166,8 +170,11 @@ fun SummaryScreen(
                     DestinationResultsList(destinationsWithStatus)
                 }
                 Text(
-                    "Total available: ${humanReadableSize(totalAvailableBytes)}" +
-                        if (hasEnoughSpace) " — enough space" else " — not enough space",
+                    Texts.get(
+                        "summary.totalAvailable",
+                        humanReadableSize(totalAvailableBytes),
+                        if (hasEnoughSpace) Texts["common.enoughSpace"] else Texts["common.notEnoughSpace"],
+                    ),
                     style = MaterialTheme.typography.caption,
                     color = if (hasEnoughSpace) Color(0xFF2E7D32) else MaterialTheme.colors.error,
                     modifier = Modifier.padding(top = 4.dp),
@@ -180,12 +187,12 @@ fun SummaryScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         HelpTooltip(HelpTexts["summary.back"]) {
                             OutlinedButton(onClick = onBack) {
-                                Text("Back")
+                                Text(Texts["summary.back"])
                             }
                         }
                         HelpTooltip(HelpTexts["summary.start"]) {
                             Button(onClick = onStart, enabled = hasEnoughSpace) {
-                                Text("Start")
+                                Text(Texts["summary.start"])
                             }
                         }
                     }
@@ -220,11 +227,11 @@ fun SummaryScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            Text("Summarizing…", style = MaterialTheme.typography.subtitle1)
+                            Text(Texts["summary.summarizingOverlay"], style = MaterialTheme.typography.subtitle1)
                             CircularProgressIndicator()
                             HelpTooltip(HelpTexts["summary.abortSummarize"]) {
                                 OutlinedButton(onClick = ::abortSummarize) {
-                                    Text("Abort")
+                                    Text(Texts["summary.abortSummarize"])
                                 }
                             }
                         }
@@ -261,8 +268,12 @@ private fun ItemsList(items: List<SelectedItem>) {
                             modifier = Modifier.weight(1f),
                         )
                         Text(
-                            "${if (item.isDirectory) "DIR" else "FILE"} · ${humanReadableSize(item.sizeBytes)}" +
-                                (item.fileCount?.let { " · $it file${if (it == 1) "" else "s"}" } ?: ""),
+                            Texts.get(
+                                "common.itemInfoTemplate",
+                                if (item.isDirectory) Texts["common.typeDirectory"] else Texts["common.typeFile"],
+                                humanReadableSize(item.sizeBytes),
+                                item.fileCount?.let { " · " + Texts.get("common.fileCountSuffix", it) } ?: "",
+                            ),
                             style = MaterialTheme.typography.caption,
                             color = Color.Gray,
                         )
@@ -308,9 +319,9 @@ private fun DestinationResultsList(destinations: List<Pair<DestinationCalcResult
                         )
                         Text(
                             if (necessary) {
-                                "${dest.percent}% · ${humanReadableSize(dest.cappedBytes)}"
+                                Texts.get("summary.destinationInfo", dest.percent, humanReadableSize(dest.cappedBytes))
                             } else {
-                                "Not necessary"
+                                Texts["summary.notNecessary"]
                             },
                             style = MaterialTheme.typography.caption,
                             color = Color.Gray,

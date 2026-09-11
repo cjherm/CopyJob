@@ -30,7 +30,7 @@ fun StartScreen(
         ) {
             Text("CopyJob", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             Text(
-                "Welcome to CopyJob!\nLet's get the job done!",
+                Texts["start.welcome"],
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 textAlign = TextAlign.Center,
             )
@@ -40,22 +40,22 @@ fun StartScreen(
             ) {
                 HelpTooltip(HelpTexts["start.new"], modifier = Modifier.fillMaxWidth()) {
                     Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) {
-                        Text("New job")
+                        Text(Texts["start.new"])
                     }
                 }
                 HelpTooltip(HelpTexts["start.open"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
-                        Text("Open job")
+                        Text(Texts["start.open"])
                     }
                 }
                 HelpTooltip(HelpTexts["start.help"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     Button(onClick = onHelp, modifier = Modifier.fillMaxWidth()) {
-                        Text("Help")
+                        Text(Texts["start.help"])
                     }
                 }
                 HelpTooltip(HelpTexts["start.exit"], modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     OutlinedButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) {
-                        Text("Exit")
+                        Text(Texts["start.exit"])
                     }
                 }
             }

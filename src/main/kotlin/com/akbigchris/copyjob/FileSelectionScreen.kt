@@ -36,7 +36,7 @@ private fun isValidJsonFile(path: String): Boolean {
 
 private fun pickJsonFile(currentPath: String): String? {
     val chooser = JFileChooser()
-    chooser.fileFilter = FileNameExtensionFilter("JSON files (*.json)", "json")
+    chooser.fileFilter = FileNameExtensionFilter(Texts["common.jsonFileFilterDescription"], "json")
     val currentFile = File(currentPath)
     when {
         currentFile.isFile -> {
@@ -65,8 +65,8 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Open job", style = MaterialTheme.typography.h6)
-            Text("Select a JSON file to continue")
+            Text(Texts["fileSelection.title"], style = MaterialTheme.typography.h6)
+            Text(Texts["fileSelection.subtitle"])
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -77,7 +77,7 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                     onValueChange = { jsonPath = it },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    label = { Text("JSON file path") },
+                    label = { Text(Texts["fileSelection.pathLabel"]) },
                 )
                 HelpTooltip(HelpTexts["fileSelection.browse"]) {
                     OutlinedButton(onClick = {
@@ -88,7 +88,7 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                             }
                         }
                     }) {
-                        Text("Browse…")
+                        Text(Texts["fileSelection.browse"])
                     }
                 }
             }
@@ -102,7 +102,7 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HelpTooltip(HelpTexts["fileSelection.back"]) {
                         OutlinedButton(onClick = onBack) {
-                            Text("Back")
+                            Text(Texts["fileSelection.back"])
                         }
                     }
                     HelpTooltip(HelpTexts["fileSelection.next"]) {
@@ -113,7 +113,7 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                             },
                             enabled = isValid,
                         ) {
-                            Text("Next")
+                            Text(Texts["fileSelection.next"])
                         }
                     }
                 }

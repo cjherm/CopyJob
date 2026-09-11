@@ -58,10 +58,10 @@ import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
 
-private enum class SortKey(val label: String) {
-    Name("Name"),
-    Type("Type"),
-    Size("Size"),
+private enum class SortKey(val labelId: String) {
+    Name("newJob.sortByName"),
+    Type("newJob.sortByType"),
+    Size("newJob.sortBySize"),
 }
 
 private fun sortedBy(items: List<JobItem>, sortKey: SortKey): List<JobItem> = when (sortKey) {
@@ -124,7 +124,7 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Select items to be copied",
+                    Texts["newJob.title"],
                     style = MaterialTheme.typography.h6,
                     modifier = Modifier.weight(1f),
                 )
@@ -135,7 +135,7 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
                             addFiles(picked)
                         }
                     }) {
-                        Text("Add")
+                        Text(Texts["newJob.add"])
                     }
                 }
             }
@@ -197,7 +197,7 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
             ) {
                 if (items.isEmpty()) {
                     Text(
-                        "Drag files or folders here",
+                        Texts["newJob.dropHint"],
                         modifier = Modifier.align(Alignment.Center),
                         color = Color.Gray,
                     )
@@ -245,10 +245,13 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
             val isCalculating = items.any { it.sizeBytes.value == null }
             val totalSize = items.sumOf { it.sizeBytes.value ?: 0L }
             Text(
-                "$fileCount file${if (fileCount == 1) "" else "s"}, " +
-                    "$dirCount director${if (dirCount == 1) "y" else "ies"} — " +
-                    humanReadableSize(totalSize) + " total" +
-                    if (isCalculating) " STILL CALCULATING..." else "",
+                Texts.get(
+                    "newJob.statsTemplate",
+                    Texts.get("newJob.statsFile", fileCount),
+                    Texts.get("newJob.statsDirectory", dirCount),
+                    humanReadableSize(totalSize),
+                    if (isCalculating) " " + Texts["newJob.statsCalculating"] else "",
+                ),
                 modifier = Modifier.padding(top = 12.dp),
             )
 
@@ -262,7 +265,7 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HelpTooltip(HelpTexts["newJob.back"]) {
                         OutlinedButton(onClick = onBack) {
-                            Text("Back")
+                            Text(Texts["newJob.back"])
                         }
                     }
                     HelpTooltip(HelpTexts["newJob.next"]) {
@@ -276,7 +279,7 @@ fun NewJobScreen(onBack: () -> Unit, onNext: (List<SelectedItem>) -> Unit) {
                             },
                             enabled = nextEnabled,
                         ) {
-                            Text("Next")
+                            Text(Texts["newJob.next"])
                         }
                     }
                 }
@@ -301,7 +304,7 @@ private fun SortHeaderLabel(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                key.label,
+                Texts[key.labelId],
                 style = MaterialTheme.typography.caption,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             )
@@ -336,12 +339,17 @@ private fun JobItemRow(item: JobItem, onRemove: () -> Unit) {
                 Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val sizeText = item.sizeBytes.value?.let { humanReadableSize(it) } ?: "…"
                 val fileCountText = if (item.isDirectory) {
-                    item.fileCount.value?.let { count -> " · $count file${if (count == 1) "" else "s"}" } ?: ""
+                    item.fileCount.value?.let { count -> " · " + Texts.get("common.fileCountSuffix", count) } ?: ""
                 } else {
                     ""
                 }
                 Text(
-                    "${if (item.isDirectory) "DIR" else "FILE"} · $sizeText$fileCountText",
+                    Texts.get(
+                        "common.itemInfoTemplate",
+                        if (item.isDirectory) Texts["common.typeDirectory"] else Texts["common.typeFile"],
+                        sizeText,
+                        fileCountText,
+                    ),
                     style = MaterialTheme.typography.caption,
                     color = Color.Gray,
                 )

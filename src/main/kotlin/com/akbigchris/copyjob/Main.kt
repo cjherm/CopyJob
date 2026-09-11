@@ -74,8 +74,8 @@ fun main() = application {
                 onNext = { navigateTo(Screen.OpenNext) },
                 onBack = { navigateTo(Screen.Start) },
             )
-            Screen.OpenNext -> PlaceholderScreen("Open job", onBack = { navigateTo(Screen.Start) })
-            Screen.Help -> PlaceholderScreen("Help", onBack = { navigateTo(Screen.Start) })
+            Screen.OpenNext -> PlaceholderScreen(Texts["placeholder.openJobTitle"], onBack = { navigateTo(Screen.Start) })
+            Screen.Help -> PlaceholderScreen(Texts["placeholder.helpTitle"], onBack = { navigateTo(Screen.Start) })
         }
     }
 }

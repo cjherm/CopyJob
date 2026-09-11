@@ -114,7 +114,7 @@ private fun defaultSaveFileName(): String = "${LocalDateTime.now().format(saveFi
 /** Prompts for a destination .json file, appending the extension and confirming overwrite as needed. */
 private fun pickSaveJsonFile(): File? {
     val chooser = JFileChooser()
-    chooser.fileFilter = FileNameExtensionFilter("JSON files (*.json)", "json")
+    chooser.fileFilter = FileNameExtensionFilter(Texts["common.jsonFileFilterDescription"], "json")
     val lastFile = AppPreferences.lastJsonPath?.let(::File)
     val lastDirectory = when {
         lastFile != null && lastFile.isFile -> lastFile.parentFile
@@ -140,8 +140,8 @@ private fun pickSaveJsonFile(): File? {
     if (file.exists()) {
         val overwrite = JOptionPane.showConfirmDialog(
             null,
-            "${file.name} already exists. Overwrite it?",
-            "Overwrite file?",
+            Texts.get("destination.overwriteConfirmMessage", file.name),
+            Texts["destination.overwriteConfirmTitle"],
             JOptionPane.YES_NO_OPTION,
         ) == JOptionPane.YES_OPTION
         if (!overwrite) return null
@@ -251,9 +251,12 @@ fun DestinationScreen(
             }
             saveMessage = if (result.isSuccess) {
                 AppPreferences.lastJsonPath = file.absolutePath
-                "Saved to ${file.name}"
+                Texts.get("destination.savedMessage", file.name)
             } else {
-                "Save failed: ${result.exceptionOrNull()?.message ?: "unknown error"}"
+                Texts.get(
+                    "destination.saveFailedMessage",
+                    result.exceptionOrNull()?.message ?: Texts["destination.saveFailedUnknownError"],
+                )
             }
         }
     }
@@ -268,27 +271,26 @@ fun DestinationScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Select destination directories",
+                        Texts["destination.title"],
                         style = MaterialTheme.typography.h6,
                         modifier = Modifier.weight(1f),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         HelpTooltip(HelpTexts["destination.resetPercent"]) {
                             OutlinedButton(onClick = ::resetPercentages, enabled = destinations.isNotEmpty()) {
-                                Text("Reset")
+                                Text(Texts["destination.resetPercent"])
                             }
                         }
                         HelpTooltip(HelpTexts["destination.add"]) {
                             Button(onClick = { addDirectories(pickDirectories()) }) {
-                                Text("Add")
+                                Text(Texts["destination.add"])
                             }
                         }
                     }
                 }
 
                 Text(
-                    "Items will be copied to these destinations in order — drag ⠿⠿ to reorder · " +
-                        "% caps how much of that destination's free space to use",
+                    Texts["destination.hint"],
                     style = MaterialTheme.typography.caption,
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 4.dp),
@@ -339,7 +341,7 @@ fun DestinationScreen(
                 ) {
                     if (destinations.isEmpty()) {
                         Text(
-                            "Drag destination folders here",
+                            Texts["destination.dropHint"],
                             modifier = Modifier.align(Alignment.Center),
                             color = Color.Gray,
                         )
@@ -349,19 +351,21 @@ fun DestinationScreen(
                 }
 
                 Text(
-                    "Space required for selected items: ${humanReadableSize(requiredBytes)}",
+                    Texts.get("destination.spaceRequired", humanReadableSize(requiredBytes)),
                     modifier = Modifier.padding(top = 12.dp),
                 )
 
+                val destinationCountText = Texts.get("destination.countSelected", destinations.size)
                 Text(
                     when {
-                        destinations.isEmpty() -> "Add at least one destination directory to continue"
-                        isCalculating -> "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — CALCULATING..."
-                        availableBytes == null ->
-                            "${destinations.size} destination director${if (destinations.size == 1) "y" else "ies"} selected — click Calculate to check available space"
-                        else ->
-                            "Available space: ${humanReadableSize(availableBytes!!)}" +
-                                if (hasEnoughSpace) " — enough space" else " — not enough space"
+                        destinations.isEmpty() -> Texts["destination.statusEmpty"]
+                        isCalculating -> Texts.get("destination.statusCalculating", destinationCountText)
+                        availableBytes == null -> Texts.get("destination.statusReady", destinationCountText)
+                        else -> Texts.get(
+                            "destination.statusResult",
+                            humanReadableSize(availableBytes!!),
+                            if (hasEnoughSpace) Texts["common.enoughSpace"] else Texts["common.notEnoughSpace"],
+                        )
                     },
                     color = when {
                         destinations.isEmpty() || isCalculating || availableBytes == null -> Color.Unspecified
@@ -377,17 +381,17 @@ fun DestinationScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         HelpTooltip(HelpTexts["destination.back"]) {
                             OutlinedButton(onClick = onBack) {
-                                Text("Back")
+                                Text(Texts["destination.back"])
                             }
                         }
                         HelpTooltip(HelpTexts["destination.calculate"]) {
                             Button(onClick = ::calculate, enabled = destinations.isNotEmpty() && !isCalculating) {
-                                Text("Calculate")
+                                Text(Texts["destination.calculate"])
                             }
                         }
                         HelpTooltip(HelpTexts["destination.save"]) {
                             Button(onClick = ::save, enabled = destinations.isNotEmpty()) {
-                                Text("Save")
+                                Text(Texts["destination.save"])
                             }
                         }
                         HelpTooltip(HelpTexts["destination.next"]) {
@@ -397,7 +401,7 @@ fun DestinationScreen(
                                 },
                                 enabled = hasEnoughSpace,
                             ) {
-                                Text("Next")
+                                Text(Texts["destination.next"])
                             }
                         }
                     }
@@ -432,11 +436,11 @@ fun DestinationScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            Text("Calculating…", style = MaterialTheme.typography.subtitle1)
+                            Text(Texts["destination.calculatingOverlay"], style = MaterialTheme.typography.subtitle1)
                             CircularProgressIndicator()
                             HelpTooltip(HelpTexts["destination.abortCalculate"]) {
                                 OutlinedButton(onClick = ::abortCalculate) {
-                                    Text("Abort")
+                                    Text(Texts["destination.abortCalculate"])
                                 }
                             }
                         }

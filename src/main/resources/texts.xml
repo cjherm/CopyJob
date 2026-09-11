@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  User-facing UI text for translation. The app name "CopyJob" is intentionally never
+  looked up through this file - it stays as-is in every language.
+  Placeholders use positional specifiers (%1$s, %2$d, ...) so translators may reorder
+  them per language. A literal "%" in output must be written as "%%".
+-->
+<texts>
+    <!-- Shared across multiple screens -->
+    <text id="common.typeDirectory">DIR</text>
+    <text id="common.typeFile">FILE</text>
+    <text id="common.itemInfoTemplate">%1$s · %2$s%3$s</text>
+    <text id="common.fileCountSuffix">%1$d file(s)</text>
+    <text id="common.enoughSpace">enough space</text>
+    <text id="common.notEnoughSpace">not enough space</text>
+    <text id="common.jsonFileFilterDescription">JSON files (*.json)</text>
+
+    <!-- StartScreen -->
+    <text id="start.welcome">Welcome to CopyJob!
+Let's get the job done!</text>
+    <text id="start.new">New job</text>
+    <text id="start.open">Open job</text>
+    <text id="start.help">Help</text>
+    <text id="start.exit">Exit</text>
+
+    <!-- PlaceholderScreen -->
+    <text id="placeholder.comingSoon">Coming soon</text>
+    <text id="placeholder.back">Back</text>
+    <text id="placeholder.openJobTitle">Open job</text>
+    <text id="placeholder.helpTitle">Help</text>
+
+    <!-- FileSelectionScreen -->
+    <text id="fileSelection.title">Open job</text>
+    <text id="fileSelection.subtitle">Select a JSON file to continue</text>
+    <text id="fileSelection.pathLabel">JSON file path</text>
+    <text id="fileSelection.browse">Browse…</text>
+    <text id="fileSelection.back">Back</text>
+    <text id="fileSelection.next">Next</text>
+
+    <!-- NewJobScreen -->
+    <text id="newJob.title">Select items to be copied</text>
+    <text id="newJob.add">Add</text>
+    <text id="newJob.sortByName">Name</text>
+    <text id="newJob.sortByType">Type</text>
+    <text id="newJob.sortBySize">Size</text>
+    <text id="newJob.dropHint">Drag files or folders here</text>
+    <text id="newJob.statsFile">%1$d file(s)</text>
+    <text id="newJob.statsDirectory">%1$d director(y/ies)</text>
+    <text id="newJob.statsTemplate">%1$s, %2$s — %3$s total%4$s</text>
+    <text id="newJob.statsCalculating">STILL CALCULATING...</text>
+    <text id="newJob.back">Back</text>
+    <text id="newJob.next">Next</text>
+
+    <!-- DestinationScreen -->
+    <text id="destination.title">Select destination directories</text>
+    <text id="destination.hint">Items will be copied to these destinations in order — drag ⠿⠿ to reorder · % caps how much of that destination's free space to use</text>
+    <text id="destination.dropHint">Drag destination folders here</text>
+    <text id="destination.add">Add</text>
+    <text id="destination.resetPercent">Reset</text>
+    <text id="destination.spaceRequired">Space required for selected items: %1$s</text>
+    <text id="destination.statusEmpty">Add at least one destination directory to continue</text>
+    <text id="destination.statusCalculating">%1$s — CALCULATING...</text>
+    <text id="destination.statusReady">%1$s — click Calculate to check available space</text>
+    <text id="destination.statusResult">Available space: %1$s — %2$s</text>
+    <text id="destination.countSelected">%1$d destination director(y/ies) selected</text>
+    <text id="destination.back">Back</text>
+    <text id="destination.calculate">Calculate</text>
+    <text id="destination.save">Save</text>
+    <text id="destination.next">Next</text>
+    <text id="destination.savedMessage">Saved to %1$s</text>
+    <text id="destination.saveFailedMessage">Save failed: %1$s</text>
+    <text id="destination.saveFailedUnknownError">unknown error</text>
+    <text id="destination.overwriteConfirmMessage">%1$s already exists. Overwrite it?</text>
+    <text id="destination.overwriteConfirmTitle">Overwrite file?</text>
+    <text id="destination.calculatingOverlay">Calculating…</text>
+    <text id="destination.abortCalculate">Abort</text>
+
+    <!-- SummaryScreen -->
+    <text id="summary.title">Summary</text>
+    <text id="summary.itemsHeading">Items to copy</text>
+    <text id="summary.totalSize">Total size: %1$s</text>
+    <text id="summary.destinationsHeading">Destinations (in order)</text>
+    <text id="summary.totalAvailable">Total available: %1$s — %2$s</text>
+    <text id="summary.destinationInfo">%1$d%% · %2$s</text>
+    <text id="summary.notNecessary">Not necessary</text>
+    <text id="summary.back">Back</text>
+    <text id="summary.start">Start</text>
+    <text id="summary.updatedMessage">Updated %1$s</text>
+    <text id="summary.updateFailedMessage">Failed to update saved job file</text>
+    <text id="summary.summarizingOverlay">Summarizing…</text>
+    <text id="summary.abortSummarize">Abort</text>
+</texts>
