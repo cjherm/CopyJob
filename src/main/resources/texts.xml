@@ -26,7 +26,6 @@ Let's get the job done!</text>
     <!-- PlaceholderScreen -->
     <text id="placeholder.comingSoon">Coming soon</text>
     <text id="placeholder.back">Back</text>
-    <text id="placeholder.openJobTitle">Open job</text>
     <text id="placeholder.helpTitle">Help</text>
 
     <!-- FileSelectionScreen -->
@@ -89,4 +88,25 @@ Let's get the job done!</text>
     <text id="summary.updateFailedMessage">Failed to update saved job file</text>
     <text id="summary.summarizingOverlay">Summarizing…</text>
     <text id="summary.abortSummarize">Abort</text>
+
+    <!-- CopyScreen -->
+    <text id="copy.title">Copying</text>
+    <text id="copy.preparing">Preparing…</text>
+    <text id="copy.progressTemplate">%1$d / %2$d files — %3$s of %4$s</text>
+    <text id="copy.currentFileTemplate">Copying: %1$s</text>
+    <text id="copy.stop">Stop</text>
+    <text id="copy.resume">Resume</text>
+    <text id="copy.abandon">Back to start</text>
+    <text id="copy.retryFailed">Retry failed</text>
+    <text id="copy.done">Done</text>
+    <text id="copy.statusStopped">Stopped — %1$d / %2$d files copied so far</text>
+    <text id="copy.statusCompleted">All files copied and verified</text>
+    <text id="copy.statusCompletedWithErrors">Finished with %1$d failed file(s)</text>
+    <text id="copy.failuresHeading">Failed files</text>
+    <text id="copy.failureRowTemplate">%1$s — %2$s</text>
+    <text id="copy.planErrorMessage">Not enough contiguous space for %1$s. Go back and free up space or add another destination.</text>
+    <text id="copy.progressSaveFailedMessage">Warning: failed to save progress to the job file</text>
+
+    <!-- FileSelectionScreen (added for job resume) -->
+    <text id="fileSelection.parseFailedMessage">Failed to read job file: %1$s</text>
 </texts>

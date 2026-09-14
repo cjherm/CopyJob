@@ -53,12 +53,14 @@ private fun pickJsonFile(currentPath: String): String? {
 }
 
 @Composable
-fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
+fun FileSelectionScreen(onNext: (ParsedJob) -> Unit, onBack: () -> Unit) {
     var jsonPath by remember {
         mutableStateOf(AppPreferences.lastJsonPath?.takeIf { isValidJsonFile(it) } ?: "")
     }
     val coroutineScope = rememberCoroutineScope()
     val isValid = isValidJsonFile(jsonPath)
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     MaterialTheme {
         Column(
@@ -108,15 +110,39 @@ fun FileSelectionScreen(onNext: () -> Unit, onBack: () -> Unit) {
                     HelpTooltip(HelpTexts["fileSelection.next"]) {
                         Button(
                             onClick = {
-                                AppPreferences.lastJsonPath = jsonPath
-                                onNext()
+                                errorMessage = null
+                                isLoading = true
+                                coroutineScope.launch {
+                                    val result = withContext(Dispatchers.IO) {
+                                        runCatching { parseJobJson(File(jsonPath).readText()) }
+                                    }
+                                    isLoading = false
+                                    result.onSuccess { parsed ->
+                                        AppPreferences.lastJsonPath = jsonPath
+                                        onNext(parsed)
+                                    }.onFailure { e ->
+                                        errorMessage = Texts.get(
+                                            "fileSelection.parseFailedMessage",
+                                            e.message ?: e.javaClass.simpleName,
+                                        )
+                                    }
+                                }
                             },
-                            enabled = isValid,
+                            enabled = isValid && !isLoading,
                         ) {
                             Text(Texts["fileSelection.next"])
                         }
                     }
                 }
+            }
+
+            val message = errorMessage
+            if (message != null) {
+                Text(
+                    message,
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.error,
+                )
             }
         }
     }

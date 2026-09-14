@@ -17,8 +17,8 @@ private enum class Screen(val windowSize: DpSize) {
     New(DpSize(640.dp, 560.dp)),
     Destination(DpSize(640.dp, 560.dp)),
     Summary(DpSize(640.dp, 680.dp)),
+    Copy(DpSize(640.dp, 600.dp)),
     OpenFile(DpSize(600.dp, 320.dp)),
-    OpenNext(DpSize(480.dp, 340.dp)),
     Help(DpSize(480.dp, 340.dp)),
 }
 
@@ -26,6 +26,7 @@ fun main() = application {
     var screen by remember { mutableStateOf(Screen.Start) }
     var selectedItems by remember { mutableStateOf<List<SelectedItem>>(emptyList()) }
     var destinationEntries by remember { mutableStateOf<List<DestinationEntry>>(emptyList()) }
+    var copyFiles by remember { mutableStateOf<List<CopyFileRecord>>(emptyList()) }
     val windowState = rememberWindowState(
         size = screen.windowSize,
         position = WindowPosition(Alignment.Center),
@@ -68,13 +69,26 @@ fun main() = application {
                 selectedItems = selectedItems,
                 destinationEntries = destinationEntries,
                 onBack = { navigateTo(Screen.Destination) },
-                onStart = { /* not wired up yet */ },
+                onStart = {
+                    copyFiles = emptyList()
+                    navigateTo(Screen.Copy)
+                },
+            )
+            Screen.Copy -> CopyScreen(
+                items = selectedItems,
+                destinationEntries = destinationEntries,
+                initialFiles = copyFiles,
+                onDone = { navigateTo(Screen.Start) },
             )
             Screen.OpenFile -> FileSelectionScreen(
-                onNext = { navigateTo(Screen.OpenNext) },
+                onNext = { parsed ->
+                    selectedItems = parsed.items
+                    destinationEntries = parsed.destinations
+                    copyFiles = parsed.files
+                    navigateTo(if (parsed.files.isNotEmpty()) Screen.Copy else Screen.Summary)
+                },
                 onBack = { navigateTo(Screen.Start) },
             )
-            Screen.OpenNext -> PlaceholderScreen(Texts["placeholder.openJobTitle"], onBack = { navigateTo(Screen.Start) })
             Screen.Help -> PlaceholderScreen(Texts["placeholder.helpTitle"], onBack = { navigateTo(Screen.Start) })
         }
     }

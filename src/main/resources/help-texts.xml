@@ -35,4 +35,10 @@
     <helpText id="summary.back">dummy help text</helpText>
     <helpText id="summary.start">dummy help text</helpText>
     <helpText id="summary.abortSummarize">dummy help text</helpText>
+
+    <helpText id="copy.stop">dummy help text</helpText>
+    <helpText id="copy.resume">dummy help text</helpText>
+    <helpText id="copy.abandon">dummy help text</helpText>
+    <helpText id="copy.retryFailed">dummy help text</helpText>
+    <helpText id="copy.done">dummy help text</helpText>
 </helpTexts>
