@@ -45,7 +45,7 @@ import java.io.File
 import java.security.MessageDigest
 
 private const val COPY_BUFFER_SIZE = 64 * 1024
-private const val PROGRESS_FLUSH_INTERVAL_MS = 2000L
+private const val PROGRESS_FLUSH_INTERVAL_MS = 60_000L
 
 private enum class CopyUiState { PREPARING, RUNNING, STOPPED, DONE_SUCCESS, DONE_WITH_ERRORS, PLAN_ERROR }
 
